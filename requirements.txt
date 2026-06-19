@@ -1,4 +1,5 @@
 eth-keys
+eth-hash[pycryptodome]
 eth-utils
 rlp
 requests

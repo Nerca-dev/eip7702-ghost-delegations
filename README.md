@@ -52,12 +52,6 @@ cat data/verified.jsonl
 
 The RPC must support archive reads for historical `eth_getCode` and `eth_getTransactionCount`.
 
-If `eth-utils` reports that no `eth-hash` backend is installed, add one inside your environment:
-
-```bash
-pip install "eth-hash[pycryptodome]"
-```
-
 ## Labels
 
 - `invalid_auth`: basic tuple validation failed, or the authority signature could not be recovered.
