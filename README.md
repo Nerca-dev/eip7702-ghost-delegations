@@ -58,6 +58,24 @@ The verifier found one `active_ghost` in the included sample candidates. The tra
 
 This is a protocol-behavior and observability finding, not a claim that the delegate was malicious.
 
+## Release note
+
+Active ghost case-study evidence summary:
+
+- Transaction: `0xa420045ee252defae20170543bcaa9ced04254d91bd81c588044d393665742f6`
+- Block / tx index: `25289575` / `121`
+- Receipt status: `false` (`failed`), fetched from RPC receipt
+- Authority account: `0x644D8E9b78437b6cD80c673C600cfE2258F2900B`
+- Delegate address: `0x00000000383e8cbe298514674ea60ee1d1de50ac`
+- Auth chain ID / nonce: `0` / `0`
+- Pre-code at block `25289574`: `0x`
+- Post-code at block `25289575`: `0xef010000000000383e8cbe298514674ea60ee1d1de50ac`
+- Current code at latest check: `0xef010000000000383e8cbe298514674ea60ee1d1de50ac`
+- Nonce check: `nonce_matches_pre_block=true`, `post_nonce_expected_increment=true`
+- State / proof level: `active_ghost` / `archive_state_confirmed`
+
+Causality note: archive block-boundary evidence supports a failed-tx ghost delegation; transaction-index-level exclusion of earlier same-block state changes is not claimed.
+
 ## Labels
 
 - `invalid_auth`: basic tuple validation failed, or the authority signature could not be recovered.
