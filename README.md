@@ -90,3 +90,7 @@ The [poc/](poc) directory is intentionally harmless. It contains a delegate with
 ## Disclaimer
 
 This is research tooling. Labels are heuristics/evidence states, not accusations.
+
+## License
+
+MIT. See [LICENSE](LICENSE).
