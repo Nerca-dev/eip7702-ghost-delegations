@@ -97,11 +97,11 @@ Causality note: archive block-boundary evidence supports a failed-tx ghost deleg
 
 Archive state is still block-level state. When nonce evidence suggests another same-block action may have affected the same authority, the verifier uses `nonce_mismatch_or_same_block_ambiguous` rather than claiming exact transaction causality.
 
-## Case Study Format
+## Case Study
 
-Failed receipt + valid auth + recovered authority + pre-code not delegated/different + post-code delegated + current state classified.
+The included case study documents a single verified `active_ghost` candidate: failed receipt + valid auth + recovered authority + empty pre-code + post-code delegated + current state still delegated.
 
-Use [case-study/failed-transaction-active-delegation.md](case-study/failed-transaction-active-delegation.md) as the template.
+Read [case-study/failed-transaction-active-delegation.md](case-study/failed-transaction-active-delegation.md) for the evidence packet, limitations, and reproduction steps.
 
 ## Dune Workflow
 
