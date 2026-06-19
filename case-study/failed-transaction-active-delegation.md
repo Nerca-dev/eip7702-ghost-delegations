@@ -22,6 +22,7 @@ This is a single verified case-study candidate, not a claim about scale. Dune ro
 | Authority | `0x644D8E9b78437b6cD80c673C600cfE2258F2900B` |
 | Delegate | `0x00000000383e8cbe298514674ea60ee1d1de50ac` |
 | Pre-code at block 25289574 | `0x` |
+| Pre-code eligible | `true` |
 | Post-code at block 25289575 | `0xef0100...50ac` |
 | Current code | `0xef0100...50ac` |
 | Pre nonce | `0` |
@@ -41,6 +42,7 @@ This is a single verified case-study candidate, not a claim about scale. Dune ro
 - The nonce bound check passed.
 - The pre-block nonce matched the authorization nonce.
 - The pre-block account code was empty.
+- The pre-code eligibility check passed because the pre-block account code was empty.
 - The post-block account code was `0xef0100 || delegate`.
 - The latest account code still matched the same delegation.
 - The verifier recorded the latest block number used for the current-state check as `current_checked_block` in `data/verified.jsonl`.

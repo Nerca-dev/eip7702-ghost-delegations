@@ -10,6 +10,7 @@ CLEARED_GHOST = "cleared_ghost"
 REPLACED_GHOST = "replaced_ghost"
 POST_DELEGATED_TO_DIFFERENT_DELEGATE = "post_delegated_to_different_delegate"
 NONCE_MISMATCH_OR_SAME_BLOCK_AMBIGUOUS = "nonce_mismatch_or_same_block_ambiguous"
+SENDER_AUTHORITY_NONCE_EDGE = "sender_authority_nonce_edge"
 RPC_FAILED = "rpc_failed"
 
 

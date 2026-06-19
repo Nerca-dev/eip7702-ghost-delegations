@@ -8,6 +8,7 @@ from classify import (
     INVALID_AUTH,
     NONCE_MISMATCH_OR_SAME_BLOCK_AMBIGUOUS,
     RPC_FAILED,
+    SENDER_AUTHORITY_NONCE_EDGE,
     classify_code_transition,
 )
 from eip7702_auth import (
@@ -80,10 +81,22 @@ def blank_state_fields():
         "post_nonce": None,
         "current_nonce": None,
         "current_checked_block": None,
+        "pre_code_eligible": None,
         "nonce_matches_pre_block": None,
         "post_nonce_expected_increment": None,
+        "authority_is_tx_sender": None,
         "causality_note": None,
     }
+
+
+def same_address(left, right):
+    if left is None or right is None:
+        return False
+    return left.lower() == right.lower()
+
+
+def pre_code_is_eligible(pre_code, pre_delegate):
+    return pre_code == "0x" or pre_delegate is not None
 
 
 def should_add_causality_note(packet):
@@ -114,6 +127,7 @@ def base_packet(row, chain_id):
         "tx_hash": row.get("tx_hash") or row.get("hash"),
         "block_number": block_number,
         "tx_index": tx_index,
+        "tx_sender": row.get("tx_sender") or row.get("from"),
         "candidate_receipt_status": bool_from_row(row.get("success"), default=False),
         "receipt_status": None,
         "receipt_block_number": None,
@@ -184,9 +198,18 @@ def verify_row(row, rpc_url, chain_id):
     packet["pre_delegate"] = parse_delegate_from_code(packet["pre_code"])
     packet["post_delegate"] = parse_delegate_from_code(packet["post_code"])
     packet["current_delegate"] = parse_delegate_from_code(packet["current_code"])
+    packet["pre_code_eligible"] = pre_code_is_eligible(
+        packet["pre_code"], packet["pre_delegate"]
+    )
     packet["nonce_matches_pre_block"] = packet["pre_nonce"] == packet["auth_nonce"]
     packet["post_nonce_expected_increment"] = packet["post_nonce"] == packet["auth_nonce"] + 1
+    packet["authority_is_tx_sender"] = same_address(packet["authority"], packet["tx_sender"])
     maybe_set_causality_note(packet)
+
+    if packet["authority_is_tx_sender"]:
+        packet["state"] = SENDER_AUTHORITY_NONCE_EDGE
+        packet["proof_level"] = "archive_state_confirmed"
+        return packet
 
     if not packet["nonce_matches_pre_block"]:
         packet["state"] = NONCE_MISMATCH_OR_SAME_BLOCK_AMBIGUOUS

@@ -69,6 +69,7 @@ Active ghost case-study evidence summary:
 - Delegate address: `0x00000000383e8cbe298514674ea60ee1d1de50ac`
 - Auth chain ID / nonce: `0` / `0`
 - Pre-code at block `25289574`: `0x`
+- Pre-code eligibility: `true`
 - Post-code at block `25289575`: `0xef010000000000383e8cbe298514674ea60ee1d1de50ac`
 - Current code at latest check: `0xef010000000000383e8cbe298514674ea60ee1d1de50ac`
 - Nonce check: `nonce_matches_pre_block=true`, `post_nonce_expected_increment=true`
@@ -87,6 +88,7 @@ Causality note: archive block-boundary evidence supports a failed-tx ghost deleg
 - `replaced_ghost`: pre/post state indicates the failed transaction block introduced the expected delegation, but latest state points at a different delegate.
 - `post_delegated_to_different_delegate`: post-block state is delegated, but not to the delegate from the candidate tuple.
 - `nonce_mismatch_or_same_block_ambiguous`: nonce evidence does not support attributing the block-level code transition to this exact candidate transaction.
+- `sender_authority_nonce_edge`: the recovered authority is also the transaction sender, so sender nonce increment ordering needs separate handling and the verifier does not claim ghost causality.
 - `rpc_failed`: the verifier could not fetch required state from the RPC.
 
 ## Proof Levels
