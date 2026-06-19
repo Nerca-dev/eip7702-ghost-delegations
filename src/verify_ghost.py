@@ -11,6 +11,7 @@ from classify import (
     classify_code_transition,
 )
 from eip7702_auth import (
+    delegation_code_for,
     hx_to_int,
     is_chain_id_valid,
     is_low_s,
@@ -18,10 +19,14 @@ from eip7702_auth import (
     parse_delegate_from_code,
     recover_authority,
 )
-from rpc_state import RPCError, get_code, get_nonce
+from rpc_state import RPCError, get_block_number, get_code, get_nonce, get_transaction_receipt
 
 
 GHOST_STATES = {"active_ghost", "cleared_ghost", "replaced_ghost"}
+CAUSALITY_NOTE = (
+    "archive block-boundary evidence supports a failed-tx ghost delegation; "
+    "transaction-index-level exclusion of earlier same-block state changes is not claimed"
+)
 
 
 def parse_args():
@@ -50,6 +55,19 @@ def bool_from_row(value, default=False):
     return bool(value)
 
 
+def int_or_none(value):
+    if value is None:
+        return None
+    return hx_to_int(value)
+
+
+def receipt_status_from_rpc(receipt):
+    status = receipt.get("status")
+    if status is None:
+        return None
+    return hx_to_int(status) == 1
+
+
 def blank_state_fields():
     return {
         "pre_code": None,
@@ -61,9 +79,27 @@ def blank_state_fields():
         "pre_nonce": None,
         "post_nonce": None,
         "current_nonce": None,
+        "current_checked_block": None,
         "nonce_matches_pre_block": None,
         "post_nonce_expected_increment": None,
+        "causality_note": None,
     }
+
+
+def should_add_causality_note(packet):
+    expected_post_code = delegation_code_for(packet["delegate"])
+    return (
+        packet["pre_code"] == "0x"
+        and isinstance(packet["post_code"], str)
+        and packet["post_code"].lower() == expected_post_code.lower()
+        and packet["nonce_matches_pre_block"] is True
+        and packet["receipt_status"] is False
+    )
+
+
+def maybe_set_causality_note(packet):
+    if should_add_causality_note(packet):
+        packet["causality_note"] = CAUSALITY_NOTE
 
 
 def base_packet(row, chain_id):
@@ -71,12 +107,17 @@ def base_packet(row, chain_id):
     auth_nonce = hx_to_int(row["auth_nonce"])
     delegate = row["delegate_address"]
     s = hx_to_int(row["auth_s"])
+    block_number = hx_to_int(row["block_number"])
+    tx_index = hx_to_int(row.get("tx_index", row.get("index", 0)))
 
     packet = {
         "tx_hash": row.get("tx_hash") or row.get("hash"),
-        "block_number": hx_to_int(row["block_number"]),
-        "tx_index": hx_to_int(row.get("tx_index", row.get("index", 0))),
-        "receipt_status": bool_from_row(row.get("success"), default=False),
+        "block_number": block_number,
+        "tx_index": tx_index,
+        "candidate_receipt_status": bool_from_row(row.get("success"), default=False),
+        "receipt_status": None,
+        "receipt_block_number": None,
+        "receipt_tx_index": None,
         "auth_chain_id": auth_chain_id,
         "delegate": delegate,
         "auth_nonce": auth_nonce,
@@ -85,8 +126,8 @@ def base_packet(row, chain_id):
         "low_s_valid": is_low_s(s),
         "nonce_bound_valid": is_nonce_valid(auth_nonce),
         "signature_recovered": False,
-        "pre_block": hx_to_int(row["block_number"]) - 1,
-        "post_block": hx_to_int(row["block_number"]),
+        "pre_block": block_number - 1,
+        "post_block": block_number,
         "state": None,
         "proof_level": "candidate_checked",
     }
@@ -96,6 +137,16 @@ def base_packet(row, chain_id):
 
 def verify_row(row, rpc_url, chain_id):
     packet = base_packet(row, chain_id)
+
+    try:
+        receipt = get_transaction_receipt(rpc_url, packet["tx_hash"])
+        packet["receipt_status"] = receipt_status_from_rpc(receipt)
+        packet["receipt_block_number"] = int_or_none(receipt.get("blockNumber"))
+        packet["receipt_tx_index"] = int_or_none(receipt.get("transactionIndex"))
+    except RPCError as exc:
+        packet["state"] = RPC_FAILED
+        packet["rpc_error"] = str(exc)
+        return packet
 
     try:
         packet["authority"] = recover_authority(row)
@@ -116,10 +167,15 @@ def verify_row(row, rpc_url, chain_id):
     try:
         packet["pre_code"] = get_code(rpc_url, packet["authority"], packet["pre_block"])
         packet["post_code"] = get_code(rpc_url, packet["authority"], packet["post_block"])
-        packet["current_code"] = get_code(rpc_url, packet["authority"], "latest")
+        packet["current_checked_block"] = get_block_number(rpc_url)
+        packet["current_code"] = get_code(
+            rpc_url, packet["authority"], packet["current_checked_block"]
+        )
         packet["pre_nonce"] = get_nonce(rpc_url, packet["authority"], packet["pre_block"])
         packet["post_nonce"] = get_nonce(rpc_url, packet["authority"], packet["post_block"])
-        packet["current_nonce"] = get_nonce(rpc_url, packet["authority"], "latest")
+        packet["current_nonce"] = get_nonce(
+            rpc_url, packet["authority"], packet["current_checked_block"]
+        )
     except RPCError as exc:
         packet["state"] = RPC_FAILED
         packet["rpc_error"] = str(exc)
@@ -130,6 +186,7 @@ def verify_row(row, rpc_url, chain_id):
     packet["current_delegate"] = parse_delegate_from_code(packet["current_code"])
     packet["nonce_matches_pre_block"] = packet["pre_nonce"] == packet["auth_nonce"]
     packet["post_nonce_expected_increment"] = packet["post_nonce"] == packet["auth_nonce"] + 1
+    maybe_set_causality_note(packet)
 
     if not packet["nonce_matches_pre_block"]:
         packet["state"] = NONCE_MISMATCH_OR_SAME_BLOCK_AMBIGUOUS

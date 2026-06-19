@@ -52,6 +52,12 @@ cat data/verified.jsonl
 
 The RPC must support archive reads for historical `eth_getCode` and `eth_getTransactionCount`.
 
+## Verified example
+
+The verifier found one `active_ghost` in the included sample candidates. The transaction receipt failed, but archive-state checks show the recovered authority account had empty code before the transaction's block and EIP-7702 delegation code after the block. The delegation was still active at latest check.
+
+This is a protocol-behavior and observability finding, not a claim that the delegate was malicious.
+
 ## Labels
 
 - `invalid_auth`: basic tuple validation failed, or the authority signature could not be recovered.
